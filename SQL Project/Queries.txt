@@ -1,0 +1,101 @@
+/* Query 1 - query used for third insight */
+WITH T1 AS
+  (SELECT A.Name Artistt,
+          SUM(IL.UnitPrice*IL.Quantity)
+   FROM InvoiceLine IL
+   JOIN Track T ON IL.TrackId = T.TrackId
+   JOIN Album AL ON AL.AlbumId = T.AlbumId
+   JOIN Artist A ON A.ArtistId= AL.ArtistId
+   GROUP BY 1
+   ORDER BY 2 DESC
+   LIMIT 1)
+SELECT A.Name 'Artist Name',
+              C.CustomerId,
+              C.FirstName,
+              C.LastName,
+              SUM(IL.UnitPrice*IL.Quantity)as 'Total'
+FROM InvoiceLine IL
+JOIN Track T ON IL.TrackId = T.TrackId
+JOIN Album AL ON AL.AlbumId = T.AlbumId
+JOIN Artist A ON A.ArtistId= AL.ArtistId
+JOIN Invoice I ON I.InvoiceId=IL.InvoiceId
+JOIN Customer C ON I.CustomerId=C.CustomerId
+JOIN T1 ON A.Name = T1.Artistt
+GROUP BY 1,
+         2,
+         3,
+         4
+ORDER BY 5 DESC
+
+/* Query 2 - query used for first insight */
+SELECT A.ArtistId,
+       A.Name,
+       count(T.TrackId)
+FROM Genre G
+JOIN Track T ON G.GenreId = T.GenreId
+JOIN Album AL ON AL.AlbumId = T.AlbumId
+JOIN Artist A ON A.ArtistId= AL.ArtistId
+WHERE G.Name = 'Rock'
+GROUP BY 1,
+         2
+ORDER BY 3 DESC
+LIMIT 10;
+
+
+/* Query 3 - query used for second insight */
+
+SELECT T3.Country,
+       T3.Name,
+       T3.Counter Purchases,
+       T3.GenreId
+FROM
+  (SELECT C.Country,
+          G.Name,
+          count(1)Counter,
+          G.GenreId
+   FROM Genre G
+   JOIN Track T ON G.GenreId = T.GenreId
+   JOIN InvoiceLine IL ON T.TrackId = IL.TrackId
+   JOIN Invoice I ON I.InvoiceId=IL.InvoiceId
+   JOIN Customer C ON I.CustomerId=C.CustomerId
+   GROUP BY 1,
+            2) T3 JOIN
+  (SELECT T1.Country, MAX(Purchase) Purchases
+   FROM
+     (SELECT C.Country, G.Name, count(*)Purchase, G.GenreId
+      FROM Genre G
+      JOIN Track T ON G.GenreId = T.GenreId
+      JOIN InvoiceLine IL ON T.TrackId = IL.TrackId
+      JOIN Invoice I ON I.InvoiceId=IL.InvoiceId
+      JOIN Customer C ON I.CustomerId=C.CustomerId
+      GROUP BY 1, 2) AS T1
+   GROUP BY 1) AS T2 ON T2.Country=T3.Country
+AND T2.Purchases = T3.Counter
+
+/* Query 4 - The query used for the fourth insight */
+WITH T1 AS
+  (SELECT C.Country,
+          SUM(I.total) TotalSpent,
+          C.FirstName,
+          C.LastName,
+          C.CustomerId
+   FROM Invoice I
+   JOIN Customer C ON I.CustomerId=C.CustomerId
+   GROUP BY 5),
+     T2 AS
+  (SELECT Country,
+          MAX(TotalSpent) AS Maxspent,
+          FirstName,
+          LastName,
+          CustomerId
+   FROM T1
+   GROUP BY Country)
+SELECT T1.Country,
+       T1.TotalSpent,
+       T1.FirstName,
+       T1.LastName,
+       T1.CustomerId
+FROM T1
+JOIN T2 ON T1.Country = T2.Country
+WHERE T1.TotalSpent = T2.Maxspent
+ORDER BY 1
